@@ -27,6 +27,7 @@ import android.view.View;
 import android.widget.Button;
 import android.widget.ProgressBar;
 
+import com.lanyue.bttest.mssage.AppToBSMessage;
 import com.lanyue.bttest.util.PairBLTUtil;
 
 import java.lang.ref.WeakReference;
@@ -50,6 +51,16 @@ public class MainActivity extends AppCompatActivity {
             startInstallPermissionSettingActivity(this);
         }
         checkPermission();
+
+        final byte[] outputBytes = new AppToBSMessage(2).getAppToBSBytes();
+        Button button11=findViewById(R.id.sendMsg);
+        button11.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                mBluetoothService.outputStreamTest(outputBytes);
+            }
+        });
+
     }
     private void checkPermission() {
 
@@ -73,6 +84,10 @@ public class MainActivity extends AppCompatActivity {
                     startDiscovery();
             }
         });
+
+
+
+
     }
 
     /**
