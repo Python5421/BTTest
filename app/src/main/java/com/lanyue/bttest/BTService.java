@@ -9,6 +9,10 @@ import android.os.Message;
 import android.util.Log;
 
 
+import com.lanyue.bttest.mssage.AppToBSMessage;
+import com.lanyue.bttest.util.BytesToInt;
+import com.lanyue.bttest.util.BytesToString;
+
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
@@ -151,15 +155,16 @@ public class BTService {
 
     private OutputStream bSConnected_Send_OutputStream; //用来点击按钮给BC传数据
     static InputStream is = null;
-    static int length;
     static byte[] data = null;
-    static byte[] bytesData = null;
+    static byte[] data1 = null;
     static ByteBuf buf = Unpooled.compositeBuffer();//无限制长度
-    static ByteBuffer frameBytes = null;
-    static int bufflenth;
     static int bufflenth1;
-    static int count = 0;
+    static long count_receive = 0;
     int beginReader;//记录包头标志
+    int connectLost;
+    int[] times = new int[200];
+    int count = 0;
+    int sum = 0;
 
     /**
      * 基站(Base Station)连接后开始接收数据的线程  尝试修改的第一版
@@ -190,73 +195,99 @@ public class BTService {
             try {
                 //获得串口的输入流
                 is = BSSocketForRead.getInputStream();
-                long a1 = System.currentTimeMillis();
-
+                long a1 = System.currentTimeMillis();//上一包的时间
                 while (true) {
-                    long a2 = System.currentTimeMillis();
+//                    count_data = count_data + 1;
+//                    long a2 = System.currentTimeMillis();//当前包时间
+//                    count = count + 1;//循环次数计数
                     //获得数据长度
-                    bufflenth1 = is.available();
-                    byte[] temp = new byte[bufflenth1];
-                    //System.out.println("循环次数"+count+",InputStream里数据长度"+bufflenth);
-                    // 获取包头开始的index
-                    beginReader = buf.readerIndex();
-                    // 标记包头开始的index
-                    buf.markReaderIndex();
-                    if (buf.readableBytes() > 0) { //证明数据有变化
-                        // 读到了协议的开始标志，结束while循环
-                        if (buf.readableBytes() == 172) {
-                            if (buf.readByte() == (byte) 0xEB) {//如果跳过长度字节后一个为标志位
-                                if (buf.readByte() == (byte) 0x90) {//如果长度符合完整报文长度继续执行。
-//                                    buf.resetReaderIndex();//还原到包头位置
-                                    buf.readBytes(temp);//读取包头标志，因为默认包头已经读过
-
-                                } else {//如果不符合长度要求reset并return，等待剩余数据到来
-                                    buf.resetReaderIndex();
-                                }
-                            }
+                    bufflenth1 = is.available(); //看输入流缓冲区里面有没有数据，这个缓冲区大小为2048
+                    if (bufflenth1 != 0) { //如果缓冲区无数据就不读取
+                        long a2 = System.currentTimeMillis();//当前包时间
+//                        connectLost = 0;
+//                        if (buf.readableBytes() < 172) { //不能小于最小长度 最小长度 应该是8 只有头和尾 5+3
+//                            buf.writeByte(is.read()); //每次读取一个字节
+//                        } else { //到这证明已经是172个字节了  要真正干活了
+                        // 获取包头开始的index
+//                            beginReader = buf.readerIndex();
+                        // 标记包头开始的index
+//                            buf.markReaderIndex();
+//                            if (buf.readByte() == (byte) 0xEB) {//判断包头
+//                                if (buf.readByte() == (byte) 0x90) {
+                        int a3 = (int) (a2 - a1);//与上一包的时间差
+//                            for (int i=0;i<200;i++){
+//                                times[i]=a3;
+                        count = count + 1;
+                        sum = sum + a3;
+//                        System.out.print("时间间隔： " + a3);
+//                        if (count == 199) {
+//                            int adsaf = sum / 200;
+////                            System.out.println("");
+//                            System.out.println("每200包平均时间间隔： " + adsaf);
+//                            sum = 0;
+//                            count = 0;
+//                        }
+//                            }
+                        a1 = a2;//更新上一包时间为本包
+                        count_receive = count_receive + 1;
+                        if (count_receive == 50) {
+                            byte[] outputBytes = new AppToBSMessage(2).getAppToBSBytes();
+                            String bbb = new BytesToString().bytesToString(outputBytes);
+                            System.out.println(bbb);
+                            outputStreamTest(outputBytes);
                         }
-                        System.out.println("循环次数：" + count +
-                                        ",InputStream里数据长度：" + bufflenth +
-//                            ",与上一包的时间差：" + a3 +
-                                        ",字节数组长度：" + temp.length +
-                                        ",buf长度" + buf.readableBytes()
-                        );
-                    }
-//                    if (bufflenth1 > 0) { //证明数据有变化
-//
-//                        if (count == 0) {
-//                            continue;
-//                        }
-//                        is.read(temp);
-//                        buf.writeBytes(temp);
-////                        buf.writeByte(is.read());//每次读取一个字节
-////                        is.read();
-//                        long a3 = a2 - a1;
-//                        a1 = a2;
-//
-//                        if (buf.readableBytes() >= 172) {
-//                            buf.readBytes(new byte[bufflenth1]);
-//                            buf.discardReadBytes();
-//                        }
+
+//                            buf.resetReaderIndex();
+//                            data = new byte[buf.readableBytes()];
+                        data = new byte[bufflenth1];
+//                            buf.readBytes(data);//假设172全部正确，读出来
+                        is.read(data);
+                            System.out.println("时间差" + a3+"数据长度"+bufflenth1);
+                        String aaaaa = new BytesToString().bytesToString(data);
+                            System.out.println(aaaaa);
+//                                    buf.discardReadBytes();//读取完毕 清除该包数据
+//                                    continue;
+//                                }
+//                            }
+                        // 未读到包头，略过一个字节 重新读取包头
+//                            buf.resetReaderIndex();//重置回最初始位置
+//                            buf.readByte();// 每次略过，一个字节，去读取，包头信息的开始标记
 
 
-                bufflenth = bufflenth1;
-                count = count + 1;
+//                        }//干活结束
+                    } //缓冲区无数据跳下一循环
+//                    else { //判断连接情况
+//                        connectLost = connectLost + 1;
+//                        if (connectLost == 1200000) {
+////                            setState(STATE_DATA_LOST_BS);
+//                            System.out.println("无数据输入");
+//                        }
+//                        if (connectLost == 3000000) { //连续20包无数据 可认为丢失连接了
+//                            try {
+//                                is.read();
+//                            } catch (Exception e) {
+//                                e.printStackTrace();
+//                                System.out.println("丢失连接");
+////                                setState(STATE_CON_LOST_BS);
+//                                connectLost = 0;
+////                                    continue;
+//                                break;
+//                            }
+//                        }
+//                    }
+                }//while循环结束
+            } catch (IOException e) {
+//                connectionLost();
+                e.printStackTrace();
             }
-        } catch(
-        IOException e)
-
-        {
-            e.printStackTrace();
         }
     }
-
-}
 
     public void outputStreamTest(byte[] appToBSBytes) {
         try {
             if (bSConnected_Send_OutputStream != null) {
                 bSConnected_Send_OutputStream.write(appToBSBytes);
+                Log.e(TAG, "已发送数据");
             } else {
                 Log.e(TAG, "outputStreamTest出现异常");
             }
