@@ -13,14 +13,20 @@
         android:text="搜索蓝牙"
         app:layout_constraintLeft_toLeftOf="parent"
         app:layout_constraintTop_toTopOf="parent" />
-
+    <Button
+        android:id="@+id/sendMsg"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="发送信息"
+        app:layout_constraintLeft_toLeftOf="parent"
+        app:layout_constraintTop_toBottomOf="@+id/findBTDevice" />
     <TextView
         android:id="@+id/text1"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:text="Hello World!"
         app:layout_constraintLeft_toLeftOf="parent"
-        app:layout_constraintTop_toBottomOf="@+id/findBTDevice" />
+        app:layout_constraintTop_toBottomOf="@+id/sendMsg" />
 
     <TextView
         android:layout_width="wrap_content"
