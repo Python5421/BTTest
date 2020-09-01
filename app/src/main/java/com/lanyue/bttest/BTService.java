@@ -189,36 +189,86 @@ public class BTService {
                 Log.i("与基站连接后的输入流", "被中断");
             }
         }
+        //无意义
+        private final Object lock = new Object();
 
+        //标志线程阻塞情况
+        private boolean pause = false;
+
+        /**
+         * 设置线程是否阻塞
+         */
+        public void pauseThread() {
+            this.pause = true;
+        }
+
+        /**
+         * 调用该方法实现恢复线程的运行
+         */
+        public void resumeThread() {
+            this.pause = false;
+            synchronized (lock) {
+                //唤醒线程
+                lock.notify();
+                Log.e("","线程已唤醒");
+            }
+        }
+
+        /**
+         * 这个方法只能在run 方法中实现，不然会阻塞主线程，导致页面无响应
+         */
+        void onPause() {
+            synchronized (lock) {
+                try {
+                    Log.e("","线程已阻塞");
+                    //线程 等待/阻塞
+                    lock.wait();
+                } catch (InterruptedException e) {
+                    e.printStackTrace();
+                }
+            }
+        }
         @Override
         public void run() {
+            super.run();
+            //标志线程开启
+//            isWait = true;
             try {
                 //获得串口的输入流
                 is = BSSocketForRead.getInputStream();
                 long a1 = System.currentTimeMillis();//上一包的时间
                 while (true) {
+                    if (pause) {
+                        //线程 阻塞/等待
+                        onPause();
+                    }
+                    long a2 = System.currentTimeMillis();//当前包时间
+                    int a3 = (int) (a2 - a1);//与上一包的时间差
+                    if (a3>100) {
+                        a1 = a2;//更新上一包时间为本包
 //                    count_data = count_data + 1;
 //                    long a2 = System.currentTimeMillis();//当前包时间
 //                    count = count + 1;//循环次数计数
-                    //获得数据长度
-                    bufflenth1 = is.available(); //看输入流缓冲区里面有没有数据，这个缓冲区大小为2048
-                    if (bufflenth1 != 0) { //如果缓冲区无数据就不读取
-                        long a2 = System.currentTimeMillis();//当前包时间
+
+                        //获得数据长度
+                        bufflenth1 = is.available(); //看输入流缓冲区里面有没有数据，这个缓冲区大小为2048
+                        if (bufflenth1 != 0) { //如果缓冲区无数据就不读取
+
 //                        connectLost = 0;
 //                        if (buf.readableBytes() < 172) { //不能小于最小长度 最小长度 应该是8 只有头和尾 5+3
 //                            buf.writeByte(is.read()); //每次读取一个字节
 //                        } else { //到这证明已经是172个字节了  要真正干活了
-                        // 获取包头开始的index
+                            // 获取包头开始的index
 //                            beginReader = buf.readerIndex();
-                        // 标记包头开始的index
+                            // 标记包头开始的index
 //                            buf.markReaderIndex();
 //                            if (buf.readByte() == (byte) 0xEB) {//判断包头
 //                                if (buf.readByte() == (byte) 0x90) {
-                        int a3 = (int) (a2 - a1);//与上一包的时间差
+
 //                            for (int i=0;i<200;i++){
 //                                times[i]=a3;
-                        count = count + 1;
-                        sum = sum + a3;
+                            count = count + 1;
+                            sum = sum + a3;
 //                        System.out.print("时间间隔： " + a3);
 //                        if (count == 199) {
 //                            int adsaf = sum / 200;
@@ -228,34 +278,34 @@ public class BTService {
 //                            count = 0;
 //                        }
 //                            }
-                        a1 = a2;//更新上一包时间为本包
-                        count_receive = count_receive + 1;
-                        if (count_receive == 50) {
-                            byte[] outputBytes = new AppToBSMessage(2).getAppToBSBytes();
-                            String bbb = new BytesToString().bytesToString(outputBytes);
-                            System.out.println(bbb);
-                            outputStreamTest(outputBytes);
-                        }
+
+                            count_receive = count_receive + 1;
+//                        if (count_receive == 50) {
+//                            byte[] outputBytes = new AppToBSMessage(2).getAppToBSBytes();
+//                            String bbb = new BytesToString().bytesToString(outputBytes);
+//                            System.out.println(bbb);
+//                            outputStreamTest(outputBytes);
+//                        }
 
 //                            buf.resetReaderIndex();
 //                            data = new byte[buf.readableBytes()];
-                        data = new byte[bufflenth1];
+                            data = new byte[bufflenth1];
 //                            buf.readBytes(data);//假设172全部正确，读出来
-                        is.read(data);
-                            System.out.println("时间差" + a3+"数据长度"+bufflenth1);
-                        String aaaaa = new BytesToString().bytesToString(data);
-                            System.out.println(aaaaa);
+                            is.read(data);
+                            System.out.println("时间差" + a3 + "数据长度" + bufflenth1);
+                            String aaaaa = new BytesToString().bytesToString(data);
+//                            System.out.println(aaaaa);
 //                                    buf.discardReadBytes();//读取完毕 清除该包数据
 //                                    continue;
 //                                }
 //                            }
-                        // 未读到包头，略过一个字节 重新读取包头
+                            // 未读到包头，略过一个字节 重新读取包头
 //                            buf.resetReaderIndex();//重置回最初始位置
 //                            buf.readByte();// 每次略过，一个字节，去读取，包头信息的开始标记
 
 
 //                        }//干活结束
-                    } //缓冲区无数据跳下一循环
+                        } //缓冲区无数据跳下一循环
 //                    else { //判断连接情况
 //                        connectLost = connectLost + 1;
 //                        if (connectLost == 1200000) {
@@ -275,7 +325,8 @@ public class BTService {
 //                            }
 //                        }
 //                    }
-                }//while循环结束
+                    }//while循环结束
+                }
             } catch (IOException e) {
 //                connectionLost();
                 e.printStackTrace();
@@ -285,9 +336,19 @@ public class BTService {
 
     public void outputStreamTest(byte[] appToBSBytes) {
         try {
+
+
+
+
+
             if (bSConnected_Send_OutputStream != null) {
+                // 3.启动后线程的 阻塞/暂停
+                bSConnected_Receive_Thread.pauseThread();
                 bSConnected_Send_OutputStream.write(appToBSBytes);
                 Log.e(TAG, "已发送数据");
+                // 4.以及 阻塞/暂停 线程后的 唤醒/继续
+                bSConnected_Receive_Thread.resumeThread();
+
             } else {
                 Log.e(TAG, "outputStreamTest出现异常");
             }
